@@ -1,0 +1,30 @@
+{
+  "name": "donvito_block37",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server/server.js",
+    "start:dev": "nodemon server/server.js",
+    "seed": "node server/seed.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cdonvito/Donvito_Block37.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cdonvito/Donvito_Block37/issues"
+  },
+  "homepage": "https://github.com/cdonvito/Donvito_Block37#readme",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^5.1.0",
+    "morgan": "^1.10.0",
+    "pg": "^8.15.5",
+    "uuid": "^11.1.0"
+  }
+}
