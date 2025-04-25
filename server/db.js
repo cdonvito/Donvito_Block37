@@ -81,7 +81,7 @@ async function createUser(
 async function fetchUsers() {
   const SQL = `SELECT  * from users;`;
   const response = await client.query(SQL);
-  return response.rows[0];
+  return response.rows;
 }
 
 async function createProduct(description, img_url, price) {
@@ -93,7 +93,7 @@ async function createProduct(description, img_url, price) {
 async function fetchProducts() {
   const SQL = `SELECT  * from products;`;
   const response = await client.query(SQL);
-  return response.rows[0];
+  return response.rows;
 }
 
 async function createUserProduct(user_id, product_id, quantity) {
@@ -102,10 +102,10 @@ async function createUserProduct(user_id, product_id, quantity) {
   return response.rows[0];
 };
 
-async function fetchUserProducts(id) {
-  const SQL = `SELECT  * from user_products WHERE id = $1;`;
-  const response = await client.query(SQL, [id]);
-  return response.rows[0];
+async function fetchUserProducts(user_id) {
+  const SQL = `SELECT  * from user_products WHERE user_id = $1;`;
+  const response = await client.query(SQL, [user_id]);
+  return response.rows;
 }
 
 async function destroyUserProduct(id, user_id) {

@@ -79,11 +79,11 @@ async function seed() {
   ]);
 
   console.log("user products created");
-  console.log(await fetchUserProducts(user_product.id));
+  console.log(await fetchUserProducts(craig.id));
 
   console.log("after destroying userProduct")
   await destroyUserProduct(user_product.id, craig.id);
-  console.log(await fetchUserProducts(user_product.id));
+  console.log(await fetchUserProducts(craig.id));
 
   await client.end();
 }
