@@ -28,9 +28,9 @@ server.use(express.json());
 server.use(morgan("dev"));
 server.use(cors());
 
+//check to see if user exists by token
 server.use(async (req, res, next) => {
   try {
-    //get the token from the request
     const token = req.header("Authorization");
 
     if (token) {
@@ -55,6 +55,7 @@ server.use(async (req, res, next) => {
 const port = process.env.PORT || 3000;
 server.listen(port, () => console.log(`server is listening on port ${port}`));
 
+//Register a new user
 server.post("/api/auth/register", async (req, res, next) => {
   try {
     const user = await createUser(
@@ -74,6 +75,7 @@ server.post("/api/auth/register", async (req, res, next) => {
   }
 });
 
+//Log in existing user
 server.post("/api/auth/login", async (req, res, next) => {
   try {
     const user = await authenticate(req.body?.username, req.body?.password);
@@ -87,6 +89,7 @@ server.post("/api/auth/login", async (req, res, next) => {
   }
 });
 
+//delete a user
 server.delete("/api/user", async (req, res, next) => {
   try {
     if (!req.user) {
@@ -101,8 +104,17 @@ server.delete("/api/user", async (req, res, next) => {
   }
 });
 
+//get all users if admin user
 server.get("/api/users", async (req, res, next) => {
   try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    if (req.user.is_admin != true) {
+      return res.status(401).send({ message: "Unauthorized" });
+    }
     const users = await fetchUsers();
     res.send(users);
   } catch (error) {
@@ -110,6 +122,7 @@ server.get("/api/users", async (req, res, next) => {
   }
 });
 
+//get current user if logged in
 server.get("/api/users/me", async (req, res, next) => {
   try {
     if (!req.user) {
@@ -124,8 +137,17 @@ server.get("/api/users/me", async (req, res, next) => {
   }
 });
 
+//create new product if admin user
 server.post("/api/product", async (req, res, next) => {
   try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    if (req.user.is_admin != true) {
+      return res.status(401).send({ message: "Unauthorized" });
+    }
     const product = await createProduct(
       req.body.description,
       req.body.img_url,
@@ -137,6 +159,7 @@ server.post("/api/product", async (req, res, next) => {
   }
 });
 
+//delete a product if admin user
 server.delete("/api/product/:id", async (req, res, next) => {
   try {
     if (!req.user) {
@@ -154,8 +177,17 @@ server.delete("/api/product/:id", async (req, res, next) => {
   }
 });
 
+// get all products if admin user
 server.get("/api/products", async (req, res, next) => {
   try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    if (req.user.is_admin != true) {
+      return res.status(401).send({ message: "Unauthorized" });
+    }
     const products = await fetchProducts();
     res.send(products);
   } catch (error) {
@@ -163,6 +195,7 @@ server.get("/api/products", async (req, res, next) => {
   }
 });
 
+// create userProduct for current user
 server.post("/api/user/userProduct", async (req, res, next) => {
   try {
     if (!req.user) {
@@ -181,6 +214,7 @@ server.post("/api/user/userProduct", async (req, res, next) => {
   }
 });
 
+// get all userProducts for current user
 server.get("/api/user/userProducts", async (req, res, next) => {
   try {
     if (!req.user) {
@@ -195,6 +229,7 @@ server.get("/api/user/userProducts", async (req, res, next) => {
   }
 });
 
+// delete userProduct for current user
 server.delete("/api/user/userProduct/:id", async (req, res, next) => {
   try {
     if (!req.user) {
@@ -209,6 +244,7 @@ server.delete("/api/user/userProduct/:id", async (req, res, next) => {
   }
 });
 
+// subtract quantity from a userProduct for the current user
 server.patch("/api/user/userProduct-s/:id", async (req, res, next) => {
   try {
     if (!req.user) {
@@ -227,6 +263,7 @@ server.patch("/api/user/userProduct-s/:id", async (req, res, next) => {
   }
 });
 
+// add quantity from a userProduct for the current user
 server.patch("/api/user/userProduct-a/:id", async (req, res, next) => {
   try {
     if (!req.user) {

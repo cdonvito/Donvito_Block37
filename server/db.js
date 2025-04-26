@@ -45,7 +45,8 @@ async function createTables() {
       id UUID PRIMARY KEY,
       user_id UUID REFERENCES users(id) NOT NULL,
       product_id UUID REFERENCES products(id) NOT NULL,
-      quantity INTEGER NOT NULL CHECK (quantity >= 0)
+      quantity INTEGER NOT NULL CHECK (quantity >= 0),
+      CONSTRAINT unique_user_id_product_id UNIQUE (user_id, product_id)
     );
   `;
 
