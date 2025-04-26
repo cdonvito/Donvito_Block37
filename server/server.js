@@ -12,6 +12,9 @@ const {
   fetchUserProducts,
   destroyUserProduct,
   subtractUserProductQuantity,
+  authenticate,
+  findUserByToken,
+  signToken,
 } = require("./db");
 
 const server = express();
@@ -21,10 +24,34 @@ server.use(express.json());
 server.use(morgan("dev"));
 server.use(cors());
 
+server.use(async (req, res, next) => {
+  try {
+    //get the token from the request
+    const token = req.header("Authorization");
+
+    if (token) {
+      const user = await findUserByToken(token);
+
+      if (!user || !user.id) {
+        next({
+          name: "Authorization Header Error",
+          message: "Authorization token malformed",
+        });
+        return;
+      } else {
+        req.user = user;
+      }
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 const port = process.env.PORT || 3000;
 server.listen(port, () => console.log(`server is listening on port ${port}`));
 
-server.post("/api/user", async (req, res, next) => {
+server.post("/api/auth/register", async (req, res, next) => {
   try {
     const user = await createUser(
       req.body.username,
@@ -36,11 +63,23 @@ server.post("/api/user", async (req, res, next) => {
       req.body.phone_number,
       req.body.billing_address
     );
-    res.status(201).send(user);
+    const token = await signToken(user.id);
+    res.status(201).send({ token });
   } catch (error) {
     next(error);
   }
 });
+
+// server.post("/api/auth/login", async (req, res, next) => {
+//   try {
+//     const user = await createUser(req.body?.name, req.body?.password);
+
+//     const token = await signToken(user.id);
+//     res.send({ token });
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 
 server.get("/api/users", async (req, res, next) => {
   try {
@@ -73,11 +112,16 @@ server.get("/api/products", async (req, res, next) => {
   }
 });
 
-server.post("/api/user/:user_id/:product_id", async (req, res, next) => {
+server.post("/api/user/userProduct", async (req, res, next) => {
   try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
     const product = await createUserProduct(
-      req.params.user_id,
-      req.params.product_id,
+      req.user.id,
+      req.body.product_id,
       req.body.quantity
     );
     res.status(201).send(product);
@@ -86,29 +130,44 @@ server.post("/api/user/:user_id/:product_id", async (req, res, next) => {
   }
 });
 
-server.get("/api/user/:user_id/products", async (req, res, next) => {
+server.get("/api/user/userProducts", async (req, res, next) => {
   try {
-    const userProducts = await fetchUserProducts(req.params.user_id);
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    const userProducts = await fetchUserProducts(req.user.id);
     res.send(userProducts);
   } catch (error) {
     next(error);
   }
 });
 
-server.delete("/api/user/:user_id/:id", async (req, res, next) => {
+server.delete("/api/user/userProduct/:id", async (req, res, next) => {
   try {
-    await destroyUserProduct(req.params.id, req.params.user_id);
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    await destroyUserProduct(req.params.id, req.user.id);
     res.sendStatus(204);
   } catch (error) {
     next(error);
   }
 });
 
-server.patch("/api/user/:user_id/:id", async (req, res, next) => {
+server.patch("/api/user/userProduct/:id", async (req, res, next) => {
   try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
     const product = await subtractUserProductQuantity(
       req.params.id,
-      req.params.user_id,
+      req.user.id,
       req.body.quantity
     );
     res.status(201).send(product);

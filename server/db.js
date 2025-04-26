@@ -31,7 +31,7 @@ async function createTables() {
 
     CREATE TABLE users(
       id UUID PRIMARY KEY,
-      username VARCHAR(255) NOT NULL,
+      username VARCHAR(255) UNIQUE NOT NULL,
       password VARCHAR(255) NOT NULL,
       is_admin BOOLEAN DEFAULT false,
       name VARCHAR(255) NOT NULL,
@@ -119,6 +119,41 @@ async function subtractUserProductQuantity(id, user_id, quantity) {
   return response.rows[0];
 }
 
+const authenticate = async (username, password) => {
+  const SQL = `SELECT id, password FROM users WHERE username = $1;`;
+
+  const response = await client.query(SQL, [username]);
+
+  //check that the password matches
+  const match_password = await bcrypt.compare(
+    password,
+    response.rows[0]?.password
+  );
+
+  //check that a user exists
+  if (match_password) {
+    //create token
+    return await signToken(response.rows[0].id);
+  }
+
+  return null;
+};
+
+const findUserByToken = async (token) => {
+  //verify the token
+  const { id } = await jwt.verify(token, JWT_SECRET);
+
+  const SQL = `SELECT * FROM users WHERE id = $1`;
+
+  const response = await client.query(SQL, [id]);
+
+  return response.rows[0];
+};
+
+const signToken = async (user_id) => {
+  return jwt.sign({ id: user_id }, JWT_SECRET);
+};
+
 module.exports = {
   client,
   createTables,
@@ -129,5 +164,8 @@ module.exports = {
   createUserProduct,
   fetchUserProducts,
   destroyUserProduct,
-  subtractUserProductQuantity
+  subtractUserProductQuantity,
+  findUserByToken,
+  authenticate,
+  signToken,
 };
