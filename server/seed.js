@@ -57,9 +57,9 @@ async function seed() {
         "",
         ""
       ),
-      createProduct("Bone", "bone.jpg", 12),
-      createProduct("Dental Treat", "dental_treat.jpg", 3),
-      createProduct("Large Dog Bed", "dog_bed_large.jpg", 40),
+      createProduct("Bone", "bone.jpg", 12, 100),
+      createProduct("Dental Treat", "dental_treat.jpg", 3, 150),
+      createProduct("Large Dog Bed", "dog_bed_large.jpg", 40, 10),
     ]
   );
 

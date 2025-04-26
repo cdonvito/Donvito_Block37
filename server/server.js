@@ -9,8 +9,10 @@ const {
   fetchUsers,
   fetchUser,
   createProduct,
+  modifyProduct,
   destroyProduct,
   fetchProducts,
+  fetchAvailableProducts,
   createUserProduct,
   fetchUserProducts,
   destroyUserProduct,
@@ -151,9 +153,31 @@ server.post("/api/product", async (req, res, next) => {
     const product = await createProduct(
       req.body.description,
       req.body.img_url,
-      req.body.price
+      req.body.price,
+      req.body.quantity_available
     );
     res.status(201).send(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// modify a product if admin user
+server.patch("/api/product/:id", async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    const product = await modifyProduct(
+      req.params.id,
+      req.body.description,
+      req.body.img_url,
+      req.body.price,
+      req.body.quantity_available
+    );
+    res.send(product);
   } catch (error) {
     next(error);
   }
@@ -178,7 +202,7 @@ server.delete("/api/product/:id", async (req, res, next) => {
 });
 
 // get all products if admin user
-server.get("/api/products", async (req, res, next) => {
+server.get("/api/products/all", async (req, res, next) => {
   try {
     if (!req.user) {
       return res
@@ -189,6 +213,16 @@ server.get("/api/products", async (req, res, next) => {
       return res.status(401).send({ message: "Unauthorized" });
     }
     const products = await fetchProducts();
+    res.send(products);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// get all products available
+server.get("/api/products/available", async (req, res, next) => {
+  try {
+    const products = await fetchAvailableProducts();
     res.send(products);
   } catch (error) {
     next(error);
@@ -245,7 +279,7 @@ server.delete("/api/user/userProduct/:id", async (req, res, next) => {
 });
 
 // subtract quantity from a userProduct for the current user
-server.patch("/api/user/userProduct-s/:id", async (req, res, next) => {
+server.patch("/api/user/userProduct/subtract/:id", async (req, res, next) => {
   try {
     if (!req.user) {
       return res
@@ -257,14 +291,14 @@ server.patch("/api/user/userProduct-s/:id", async (req, res, next) => {
       req.user.id,
       req.body.quantity
     );
-    res.status(201).send(product);
+    res.send(product);
   } catch (error) {
     next(error);
   }
 });
 
 // add quantity from a userProduct for the current user
-server.patch("/api/user/userProduct-a/:id", async (req, res, next) => {
+server.patch("/api/user/userProduct/add/:id", async (req, res, next) => {
   try {
     if (!req.user) {
       return res
@@ -276,8 +310,13 @@ server.patch("/api/user/userProduct-a/:id", async (req, res, next) => {
       req.user.id,
       req.body.quantity
     );
-    res.status(201).send(product);
+    res.send(product);
   } catch (error) {
     next(error);
   }
+});
+
+server.use((err, req, res, next) => {
+  console.log(err);
+  res.status(err.status || 500).send({ error: err.message || err });
 });
