@@ -78,10 +78,21 @@ async function createUser(
   return response.rows[0];
 };
 
+async function destroyUser(id) {
+  const SQL = `DELETE FROM users WHERE id = $1;`;
+  await client.query(SQL, [id]);
+}
+
 async function fetchUsers() {
   const SQL = `SELECT  * from users;`;
   const response = await client.query(SQL);
   return response.rows;
+}
+
+async function fetchUser(id) {
+  const SQL = `SELECT * from users WHERE id = $1`
+  const response = await client.query(SQL, [id]);
+  return response.rows[0];
 }
 
 async function createProduct(description, img_url, price) {
@@ -89,6 +100,11 @@ async function createProduct(description, img_url, price) {
   const response = await client.query(SQL, [uuid.v4(), description, img_url, price]);
   return response.rows[0];
 };
+
+async function destroyProduct(id) {
+  const SQL = `DELETE FROM products WHERE id = $1;`;
+  await client.query(SQL, [id]);
+}
 
 async function fetchProducts() {
   const SQL = `SELECT  * from products;`;
@@ -110,7 +126,7 @@ async function fetchUserProducts(user_id) {
 
 async function destroyUserProduct(id, user_id) {
   const SQL = `DELETE FROM user_products WHERE id = $1 AND user_id = $2;`;
-  await client.query(SQL, [id, user_id,]);
+  await client.query(SQL, [id, user_id]);
 };
 
 async function subtractUserProductQuantity(id, user_id, quantity) {
@@ -119,21 +135,22 @@ async function subtractUserProductQuantity(id, user_id, quantity) {
   return response.rows[0];
 }
 
+async function addUserProductQuantity(id, user_id, quantity) {
+  const SQL = `UPDATE user_products SET quantity = quantity + $3 WHERE id = $1 AND user_id = $2 RETURNING *;`;
+  const response = await client.query(SQL, [id, user_id, quantity]);
+  return response.rows[0];
+}
+
 const authenticate = async (username, password) => {
   const SQL = `SELECT id, password FROM users WHERE username = $1;`;
-
   const response = await client.query(SQL, [username]);
+  const user = response.rows[0];
 
-  //check that the password matches
-  const match_password = await bcrypt.compare(
-    password,
-    response.rows[0]?.password
-  );
-
-  //check that a user exists
-  if (match_password) {
-    //create token
-    return await signToken(response.rows[0].id);
+  if (user) {
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (isMatch) {
+      return { id: user.id };
+    }
   }
 
   return null;
@@ -158,13 +175,17 @@ module.exports = {
   client,
   createTables,
   createUser,
+  destroyUser,
   fetchUsers,
+  fetchUser,
   createProduct,
+  destroyProduct,
   fetchProducts,
   createUserProduct,
   fetchUserProducts,
   destroyUserProduct,
   subtractUserProductQuantity,
+  addUserProductQuantity,
   findUserByToken,
   authenticate,
   signToken,

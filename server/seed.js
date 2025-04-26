@@ -31,7 +31,7 @@ async function seed() {
         "madiewilson",
         "abc123",
         false,
-        "Madie Wislon",
+        "Madie Wilson",
         "test@gmail.com",
         "345 Hacker Way",
         "",

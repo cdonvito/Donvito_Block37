@@ -5,13 +5,17 @@ require("dotenv").config();
 const {
   client,
   createUser,
+  destroyUser,
   fetchUsers,
+  fetchUser,
   createProduct,
+  destroyProduct,
   fetchProducts,
   createUserProduct,
   fetchUserProducts,
   destroyUserProduct,
   subtractUserProductQuantity,
+  addUserProductQuantity,
   authenticate,
   findUserByToken,
   signToken,
@@ -54,8 +58,8 @@ server.listen(port, () => console.log(`server is listening on port ${port}`));
 server.post("/api/auth/register", async (req, res, next) => {
   try {
     const user = await createUser(
-      req.body.username,
-      req.body.password,
+      req.body?.username,
+      req.body?.password,
       req.body.is_admin,
       req.body.name,
       req.body.email_address,
@@ -70,20 +74,50 @@ server.post("/api/auth/register", async (req, res, next) => {
   }
 });
 
-// server.post("/api/auth/login", async (req, res, next) => {
-//   try {
-//     const user = await createUser(req.body?.name, req.body?.password);
+server.post("/api/auth/login", async (req, res, next) => {
+  try {
+    const user = await authenticate(req.body?.username, req.body?.password);
+    if (!user) {
+      return res.status(401).send({ message: "Invalid credentials" });
+    }
+    const token = await signToken(user.id);
+    res.status(200).send({ token });
+  } catch (error) {
+    next(error);
+  }
+});
 
-//     const token = await signToken(user.id);
-//     res.send({ token });
-//   } catch (error) {
-//     next(error);
-//   }
-// });
+server.delete("/api/user", async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    await destroyUser(req.user.id);
+    res.sendStatus(204);
+  } catch (error) {
+    next(error);
+  }
+});
 
 server.get("/api/users", async (req, res, next) => {
   try {
     const users = await fetchUsers();
+    res.send(users);
+  } catch (error) {
+    next(error);
+  }
+});
+
+server.get("/api/users/me", async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    const users = await fetchUser(req.user.id);
     res.send(users);
   } catch (error) {
     next(error);
@@ -98,6 +132,23 @@ server.post("/api/product", async (req, res, next) => {
       req.body.price
     );
     res.status(201).send(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+server.delete("/api/product/:id", async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    if (req.user.is_admin != true) {
+      return res.status(401).send({ message: "Unauthorized" });
+    }
+    await destroyProduct(req.params.id);
+    res.sendStatus(204);
   } catch (error) {
     next(error);
   }
@@ -158,7 +209,7 @@ server.delete("/api/user/userProduct/:id", async (req, res, next) => {
   }
 });
 
-server.patch("/api/user/userProduct/:id", async (req, res, next) => {
+server.patch("/api/user/userProduct-s/:id", async (req, res, next) => {
   try {
     if (!req.user) {
       return res
@@ -166,6 +217,24 @@ server.patch("/api/user/userProduct/:id", async (req, res, next) => {
         .send({ message: "You must be logged in to do that" });
     }
     const product = await subtractUserProductQuantity(
+      req.params.id,
+      req.user.id,
+      req.body.quantity
+    );
+    res.status(201).send(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+server.patch("/api/user/userProduct-a/:id", async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    const product = await addUserProductQuantity(
       req.params.id,
       req.user.id,
       req.body.quantity
