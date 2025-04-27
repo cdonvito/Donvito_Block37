@@ -15,8 +15,8 @@ async function seed() {
   await createTables();
   console.log("tables created");
 
-  const [craig, madie, penny, scooby, bone, dentalTreat, dogBedLarge] = await Promise.all(
-    [
+  const [craig, madie, penny, scooby, bone, dentalTreat, dogBedLarge] =
+    await Promise.all([
       createUser(
         "craigdonvito",
         "password123",
@@ -60,8 +60,7 @@ async function seed() {
       createProduct("Bone", "bone.jpg", 12, 100),
       createProduct("Dental Treat", "dental_treat.jpg", 3, 150),
       createProduct("Large Dog Bed", "dog_bed_large.jpg", 40, 10),
-    ]
-  );
+    ]);
 
   console.log("users created");
   console.log(await fetchUsers());
