@@ -46,7 +46,7 @@ async function createTables() {
       id UUID PRIMARY KEY,
       user_id UUID REFERENCES users(id) NOT NULL,
       product_id UUID REFERENCES products(id) NOT NULL,
-      quantity INTEGER NOT NULL CHECK (quantity >= 0),
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
       CONSTRAINT unique_user_id_product_id UNIQUE (user_id, product_id)
     );
   `;
@@ -114,6 +114,7 @@ async function modifyProduct(id, description, img_url, price, quantity_available
   const response = await client.query(SQL, [
     id,
     description,
+    img_url,
     price,
     quantity_available,
   ]);
@@ -135,6 +136,18 @@ async function fetchAvailableProducts() {
   const SQL = `SELECT  * from products WHERE quantity_available > 0;`;
   const response = await client.query(SQL);
   return response.rows;
+}
+
+async function fetchProduct(id) {
+  const SQL = `SELECT  * from products WHERE id = $1 AND quantity_available > 0`;
+  const response = await client.query(SQL, [id]);
+  const product = response.rows[0];
+  if (!product) {
+    const error = new Error("Out of stock");
+    error.status = 404;
+    throw error;
+  }
+  return product;
 }
 
 async function createUserProduct(user_id, product_id, quantity) {
@@ -213,6 +226,7 @@ module.exports = {
   destroyProduct,
   fetchProducts,
   fetchAvailableProducts,
+  fetchProduct,
   createUserProduct,
   fetchUserProducts,
   destroyUserProduct,

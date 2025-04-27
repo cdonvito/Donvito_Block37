@@ -13,6 +13,7 @@ const {
   destroyProduct,
   fetchProducts,
   fetchAvailableProducts,
+  fetchProduct,
   createUserProduct,
   fetchUserProducts,
   destroyUserProduct,
@@ -170,6 +171,9 @@ server.patch("/api/product/:id", async (req, res, next) => {
         .status(401)
         .send({ message: "You must be logged in to do that" });
     }
+    if (req.user.is_admin != true) {
+      return res.status(401).send({ message: "Unauthorized" });
+    }
     const product = await modifyProduct(
       req.params.id,
       req.body.description,
@@ -224,6 +228,16 @@ server.get("/api/products/available", async (req, res, next) => {
   try {
     const products = await fetchAvailableProducts();
     res.send(products);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// get single product
+server.get("/api/product/:id", async (req, res, next) => {
+  try {
+    const product = await fetchProduct(req.params.id);
+    res.send(product);
   } catch (error) {
     next(error);
   }
