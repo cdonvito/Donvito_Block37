@@ -19,6 +19,7 @@ const client = new pg.Client(
 async function createTables() {
   const SQL = `
     DROP TABLE IF EXISTS user_products;
+    DROP TABLE IF EXISTS user_orders;
     DROP TABLE IF EXISTS users;
     DROP TABLE IF EXISTS products;
 
@@ -48,6 +49,20 @@ async function createTables() {
       product_id UUID REFERENCES products(id) NOT NULL,
       quantity INTEGER NOT NULL CHECK (quantity > 0),
       CONSTRAINT unique_user_id_product_id UNIQUE (user_id, product_id)
+    );
+
+    CREATE TABLE orders(
+      id UUID PRIMARY KEY,
+      user_id UUID REFERENCES users(id) NOT NULL,
+      order_date DATE NOT NULL
+    );
+
+    CREATE TABLE order_products(
+      id UUID PRIMARY KEY,
+      order_id UUID REFERENCES orders(id) NOT NULL,
+      product_id UUID REFERENCES products(id) NOT NULL,
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
+      CONSTRAINT order_id_product_id UNIQUE (order_id, product_id)
     );
   `;
 
@@ -109,7 +124,13 @@ async function createProduct(description, img_url, price, quantity_available) {
   return response.rows[0];
 }
 
-async function modifyProduct(id, description, img_url, price, quantity_available) {
+async function modifyProduct(
+  id,
+  description,
+  img_url,
+  price,
+  quantity_available
+) {
   const SQL = `UPDATE products SET description = $2, img_url = $3, price = $4, quantity_available = $5 WHERE id = $1 RETURNING *;`;
   const response = await client.query(SQL, [
     id,
@@ -184,6 +205,25 @@ async function addUserProductQuantity(id, user_id, quantity) {
   return response.rows[0];
 }
 
+async function checkoutOrder(user_id, order_date) {
+  const SQL = `INSERT INTO orders(user_id, order_date) VALUES($1, $2) RETURNING *;`;
+  const response = await client.query(SQL, [
+    user_id,
+    order_date,
+  ]);
+  return response.rows[0];
+}
+
+async function checkoutProducts(order_id, product_id, quantity) {
+  const SQL = `INSERT INTO order_products(order_id, product_id, quantity) VALUES($1, $2, $3) RETURNING *;`;
+  const response = await client.query(SQL, [
+    order_id,
+    product_id,
+    quantity,
+  ]);
+  return response.rows[0];
+}
+
 const authenticate = async (username, password) => {
   const SQL = `SELECT id, password FROM users WHERE username = $1;`;
   const response = await client.query(SQL, [username]);
@@ -232,6 +272,8 @@ module.exports = {
   destroyUserProduct,
   subtractUserProductQuantity,
   addUserProductQuantity,
+  checkoutOrder,
+  checkoutProducts,
   findUserByToken,
   authenticate,
   signToken,

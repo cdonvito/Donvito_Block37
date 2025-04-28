@@ -19,6 +19,8 @@ const {
   destroyUserProduct,
   subtractUserProductQuantity,
   addUserProductQuantity,
+  checkoutOrder,
+  checkoutProducts,
   authenticate,
   findUserByToken,
   signToken,
@@ -325,6 +327,38 @@ server.patch("/api/user/userProduct/add/:id", async (req, res, next) => {
       req.body.quantity
     );
     res.send(product);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// user checkout
+server.post("/api/user/checkout", async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).send({ message: "You must be logged in to do that" });
+    }
+
+    const { products, order_date } = req.body;
+
+    if (!Array.isArray(products) || products.length === 0) {
+      return res.status(400).send({ message: "Products must be a non-empty array" });
+    }
+
+    // Step 1: Create a new order
+    const order = await checkoutOrder(req.user.id, order_date);
+
+    // Step 2: Insert all products tied to the order
+    const checkoutResults = await Promise.all(
+      products.map(product => 
+        checkoutProducts(order.id, product.product_id, product.quantity)
+      )
+    );
+
+    res.send({
+      orderId: order.id,
+      products: checkoutResults
+    });
   } catch (error) {
     next(error);
   }
