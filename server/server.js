@@ -21,6 +21,10 @@ const {
   addUserProductQuantity,
   checkoutOrder,
   checkoutProducts,
+  checkoutProductQuantity,
+  destroyAllUserProducts,
+  fetchOrders,
+  fetchOrderProducts,
   authenticate,
   findUserByToken,
   signToken,
@@ -336,29 +340,74 @@ server.patch("/api/user/userProduct/add/:id", async (req, res, next) => {
 server.post("/api/user/checkout", async (req, res, next) => {
   try {
     if (!req.user) {
-      return res.status(401).send({ message: "You must be logged in to do that" });
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
     }
 
-    const { products, order_date } = req.body;
+    const userProducts = await fetchUserProducts(req.user.id);
 
-    if (!Array.isArray(products) || products.length === 0) {
-      return res.status(400).send({ message: "Products must be a non-empty array" });
+    if (!Array.isArray(userProducts) || userProducts.length === 0) {
+      return res
+        .status(400)
+        .send({ message: "Products must be a non-empty array" });
     }
+
+    const order_date = new Date();
 
     // Step 1: Create a new order
     const order = await checkoutOrder(req.user.id, order_date);
 
-    // Step 2: Insert all products tied to the order
+    // Step 2: Insert all products tied to the order & update product quantity
     const checkoutResults = await Promise.all(
-      products.map(product => 
-        checkoutProducts(order.id, product.product_id, product.quantity)
-      )
+      userProducts.map(async (item) => {
+        const orderProduct = await checkoutProducts(
+          order.id,
+          req.user.id,
+          item.product_id,
+          item.quantity,
+        );
+        await checkoutProductQuantity(item.product_id, item.quantity);
+        return orderProduct;
+      })
     );
 
-    res.send({
+    // Step 3: Clear user's cart
+    await destroyAllUserProducts(req.user.id);
+
+    res.status(201).send({
       orderId: order.id,
-      products: checkoutResults
+      products: checkoutResults,
+      message: "Checkout successful",
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+server.get("/api/user/orders", async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    const userOrders = await fetchOrders(req.user.id);
+    res.send(userOrders);
+  } catch (error) {
+    next(error);
+  }
+});
+
+server.get("/api/user/order/summary", async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .send({ message: "You must be logged in to do that" });
+    }
+    const orderSummary = await fetchOrderProducts(req.body.order_id, req.user.id);
+    res.send(orderSummary);
   } catch (error) {
     next(error);
   }

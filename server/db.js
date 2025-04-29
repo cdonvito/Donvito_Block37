@@ -19,7 +19,8 @@ const client = new pg.Client(
 async function createTables() {
   const SQL = `
     DROP TABLE IF EXISTS user_products;
-    DROP TABLE IF EXISTS user_orders;
+    DROP TABLE IF EXISTS order_products;
+    DROP TABLE IF EXISTS orders;
     DROP TABLE IF EXISTS users;
     DROP TABLE IF EXISTS products;
 
@@ -60,8 +61,10 @@ async function createTables() {
     CREATE TABLE order_products(
       id UUID PRIMARY KEY,
       order_id UUID REFERENCES orders(id) NOT NULL,
+      user_id UUID REFERENCES users(id) NOT NULL,
       product_id UUID REFERENCES products(id) NOT NULL,
       quantity INTEGER NOT NULL CHECK (quantity > 0),
+      unit_price FLOAT NOT NULL,
       CONSTRAINT order_id_product_id UNIQUE (order_id, product_id)
     );
   `;
@@ -206,21 +209,48 @@ async function addUserProductQuantity(id, user_id, quantity) {
 }
 
 async function checkoutOrder(user_id, order_date) {
-  const SQL = `INSERT INTO orders(user_id, order_date) VALUES($1, $2) RETURNING *;`;
+  const SQL = `INSERT INTO orders(id, user_id, order_date) VALUES($1, $2, $3) RETURNING *;`;
+  const response = await client.query(SQL, [uuid.v4(), user_id, order_date]);
+  return response.rows[0];
+}
+
+async function checkoutProducts(order_id, user_id, product_id, quantity) {
+  const SQL = `INSERT INTO order_products(id, order_id, user_id, product_id, quantity, unit_price) SELECT $1, $2, $3, $4, $5, price FROM products WHERE id = $4 RETURNING *;`;
   const response = await client.query(SQL, [
+    uuid.v4(),
+    order_id,
     user_id,
-    order_date,
+    product_id,
+    quantity,
   ]);
   return response.rows[0];
 }
 
-async function checkoutProducts(order_id, product_id, quantity) {
-  const SQL = `INSERT INTO order_products(order_id, product_id, quantity) VALUES($1, $2, $3) RETURNING *;`;
-  const response = await client.query(SQL, [
-    order_id,
-    product_id,
-    quantity,
-  ]);
+async function checkoutProductQuantity(id, quantity_available) {
+  const SQL = `UPDATE products SET quantity_available = quantity_available - $2 WHERE id = $1 RETURNING *;`;
+  const response = await client.query(SQL, [id, quantity_available]);
+
+  if (!response.rows[0] || response.rows[0].quantity_available < 0) {
+    throw new Error(`Not enough stock for product ID ${id}`);
+  }
+
+  return response.rows[0];
+}
+
+async function destroyAllUserProducts(user_id) {
+  const SQL = `DELETE FROM user_products WHERE user_id = $1;`;
+  await client.query(SQL, [user_id]);
+}
+
+async function fetchOrders(user_id) {
+  const SQL = `SELECT * from orders WHERE user_id = $1;`;
+  const response = await client.query(SQL, [user_id]);
+  return response.rows;
+}
+
+async function fetchOrderProducts(order_id, user_id) {
+  const SQL = `SELECT * from order_products WHERE order_id = $1 AND user_id = $2;`;
+  const response = await client.query(SQL, [order_id, user_id]);
   return response.rows[0];
 }
 
@@ -274,6 +304,10 @@ module.exports = {
   addUserProductQuantity,
   checkoutOrder,
   checkoutProducts,
+  checkoutProductQuantity,
+  destroyAllUserProducts,
+  fetchOrders,
+  fetchOrderProducts,
   findUserByToken,
   authenticate,
   signToken,
